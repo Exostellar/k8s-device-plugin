@@ -62,6 +62,8 @@ var errInvalidRequest = errors.New("invalid request")
 // It asserts that all requested IDs are known to the resource manager and that the request is
 // valid for a specified sharing configuration.
 func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
+	klog.Info("~ ValidateRequest: ", ids)
+
 	// Assert that all requested IDs are known to the resource manager
 	for _, id := range ids {
 		if !r.devices.Contains(id) {
@@ -73,6 +75,7 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 	// error out if more than one resource is being allocated.
 	includesReplicas := ids.AnyHasAnnotations()
 	numRequestedDevices := len(ids)
+
 	switch r.config.Sharing.SharingStrategy() {
 	case spec.SharingStrategyTimeSlicing:
 		if includesReplicas && numRequestedDevices > 1 && r.config.Sharing.ReplicatedResources().FailRequestsGreaterThanOne {
@@ -90,11 +93,14 @@ func (r *resourceManager) ValidateRequest(ids AnnotatedIDs) error {
 			return fmt.Errorf("%w: maximum request size for shared resources is 1; found %d", errInvalidRequest, numRequestedDevices)
 		}
 	}
+
+	klog.Info("~ ValidateRequest requesting # devices:", numRequestedDevices)
 	return nil
 }
 
 // AddDefaultResourcesToConfig adds default resource matching rules to config.Resources
 func AddDefaultResourcesToConfig(infolib info.Interface, nvmllib nvml.Interface, devicelib device.Interface, config *spec.Config) error {
+	klog.Info("*************\nAddDefaultResourcesToConfig")
 	_ = config.Resources.AddGPUResource("*", "gpu")
 	if config.Flags.MigStrategy == nil {
 		return nil

@@ -75,3 +75,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	tags.cncf.io/container-device-interface/specs-go v0.8.0 // indirect
 )
+
+replace github.com/NVIDIA/k8s-device-plugin => .
+
+replace github.com/NVIDIA/go-gpuallocator => ./go-gpuallocator

@@ -120,10 +120,34 @@ func (b *deviceMapBuilder) buildGPUDeviceMap() (DeviceMap, error) {
 		if migEnabled && *b.migStrategy != spec.MigStrategyNone {
 			return nil
 		}
+
+		memoryInfo, ret := gpu.GetMemoryInfo()
+		if ret != nvml.SUCCESS {
+			return fmt.Errorf("error getting memory info for GPU: %v", ret)
+		}
+		totalMemoryGB := memoryInfo.Total / (1024 * 1024 * 1024)
+		klog.Infof("~ buildGPUDeviceMap: %d[%v] has %v GB", i, name, totalMemoryGB)
+
 		for _, resource := range b.resources.GPUs {
 			if resource.Pattern.Matches(name) {
 				index, info := b.newGPUDevice(i, gpu)
-				return devices.setEntry(resource.Name, index, info)
+
+				// build device once
+				dev, err := BuildDevice(index, info)
+				if err != nil {
+					return fmt.Errorf("error building Device: %v", err)
+				}
+
+				for j := 1; j <= int(totalMemoryGB); j++ {
+					gb_dev := *dev
+					gb_dev.ID = string(NewAnnotatedID(dev.ID, j))
+					devices.insert(resource.Name, &gb_dev)
+				}
+
+				return nil
+				// setEntry calls: BuildDevice and .insert,
+				// we do it manually
+				// return devices.setEntry(resource.Name, index, info)
 			}
 		}
 		return fmt.Errorf("GPU name '%v' does not match any resource patterns", name)
@@ -334,3 +358,59 @@ func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, 
 
 	return devices, nil
 }
+
+// // updateDeviceMapWithReplicas returns an updated map of resource names to devices with replica
+// // information from the active replicated resources config.
+// func updateDeviceMapWithReplicas(replicatedResources *spec.ReplicatedResources, oDevices DeviceMap) (DeviceMap, error) {
+// 	devices := make(DeviceMap)
+
+// 	// Begin by walking replicatedResources.Resources and building a map of just the resource names.
+// 	names := make(map[spec.ResourceName]bool)
+// 	for _, r := range replicatedResources.Resources {
+// 		names[r.Name] = true
+// 	}
+
+// 	// Copy over all devices from oDevices without a resource reference in TimeSlicing.Resources.
+// 	for r, ds := range oDevices {
+// 		if !names[r] {
+// 			devices[r] = ds
+// 		}
+// 	}
+
+// 	// Walk shared Resources and update devices in the device map as appropriate.
+// 	for _, resource := range replicatedResources.Resources {
+// 		r := resource
+// 		// Get the IDs of the devices we want to replicate from oDevices
+// 		ids, err := oDevices.getIDsOfDevicesToReplicate(&r)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("unable to get IDs of devices to replicate for '%v' resource: %v", r.Name, err)
+// 		}
+// 		// Skip any resources not matched in oDevices
+// 		if len(ids) == 0 {
+// 			continue
+// 		}
+
+// 		// Add any devices we don't want replicated directly into the device map.
+// 		for _, d := range oDevices[r.Name].Difference(oDevices[r.Name].Subset(ids)) {
+// 			devices.insert(r.Name, d)
+// 		}
+
+// 		// Create replicated devices add them to the device map.
+// 		// Rename the resource for replicated devices as requested.
+// 		name := r.Name
+// 		if r.Rename != "" {
+// 			name = r.Rename
+// 		}
+// 		for _, id := range ids {
+// 			for i := 0; i < r.Replicas; i++ {
+// 				annotatedID := string(NewAnnotatedID(id, i))
+// 				replicatedDevice := *(oDevices[r.Name][id])
+// 				replicatedDevice.ID = annotatedID
+// 				replicatedDevice.Replicas = r.Replicas
+// 				devices.insert(name, &replicatedDevice)
+// 			}
+// 		}
+// 	}
+
+// 	return devices, nil
+// }

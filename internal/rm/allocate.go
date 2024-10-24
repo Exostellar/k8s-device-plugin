@@ -19,12 +19,15 @@ package rm
 import (
 	"fmt"
 	"sort"
+
+	"k8s.io/klog/v2"
 )
 
 // distributedAlloc returns a list of devices such that any replicated
 // devices are distributed across all replicated GPUs equally. It takes into
 // account already allocated replicas to ensure a proper balance across them.
 func (r *resourceManager) distributedAlloc(available, required []string, size int) ([]string, error) {
+	klog.Info("*************\ndistributedAlloc.")
 	// Get the set of candidate devices as the difference between available and required.
 	candidates := r.devices.Subset(available).Difference(r.devices.Subset(required)).GetIDs()
 	needed := size - len(required)
@@ -67,6 +70,11 @@ func (r *resourceManager) distributedAlloc(available, required []string, size in
 			jdiff := replicas[jid].total - replicas[jid].available
 			return idiff < jdiff
 		})
+
+		klog.Info("~ Sorted devices: ", candidates)
+		klog.Info("~ Choosing: ", candidates[0])
+		klog.Infof("  with: %s free memory", candidates[0])
+
 		id := AnnotatedID(candidates[0]).GetID()
 		replicas[id].available--
 		devices = append(devices, candidates[0])

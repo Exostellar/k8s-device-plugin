@@ -5,6 +5,8 @@ package gpuallocator
 import (
 	"fmt"
 
+	"k8s.io/klog/v2"
+
 	// TODO: We rename this import to reduce the changes required below.
 	// This can be removed once the link-specifics have been migrated into go-nvlib.
 	nvml "github.com/NVIDIA/go-gpuallocator/internal/links"
@@ -34,6 +36,9 @@ func NewBestEffortPolicy() Policy {
 // non-hierarchical nature of the various links that influence the score
 // calculated for each pair of GPUs.
 func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, size int) []*Device {
+
+	klog.Infof("~~ bestEffortPolicy Allocate")
+
 	if size <= 0 {
 		return []*Device{}
 	}
@@ -55,7 +60,9 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 	// all of the GPUs 'required' by the allocation.
 	bestPartition := [][]*Device(nil)
 	bestScore := 0
+
 	iterateGPUPartitions(available, size, func(candidate [][]*Device) {
+		klog.Infof("~~ iterateGPUPartitions: %v", candidate)
 		if !gpuPartitionContainsSetWithAll(candidate, required) {
 			return
 		}
@@ -74,6 +81,7 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 			filteredBestPartition = append(filteredBestPartition, set)
 		}
 	}
+	klog.Infof("~~ filteredBestPartition: %v", filteredBestPartition)
 
 	if len(filteredBestPartition) == 0 {
 		return []*Device{}
@@ -82,14 +90,19 @@ func (p *bestEffortPolicy) Allocate(available []*Device, required []*Device, siz
 	// Find the highest scoring GPU set in the highest scoring GPU partition.
 	bestSet := filteredBestPartition[0]
 	bestScore = calculateGPUSetScore(bestSet)
+	// this only iterates after the first, so if there is only one, this loop doesnt run.
 	for i := 1; i < len(filteredBestPartition); i++ {
+		// the score of a single GPU request is always 0
 		score := calculateGPUSetScore(filteredBestPartition[i])
+		klog.Infof("~~ device %v score %v", i, score)
+
 		if score > bestScore {
 			bestSet = filteredBestPartition[i]
 			bestScore = score
 		}
 	}
 
+	klog.Infof("~~ returning devices %v", bestSet)
 	// Return the highest scoring GPU set.
 	return bestSet
 }

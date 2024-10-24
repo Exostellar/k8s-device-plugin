@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/klog/v2"
+
 	"github.com/NVIDIA/go-nvlib/pkg/nvlib/device"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 
@@ -74,6 +76,8 @@ type DeviceSet map[string]*Device
 
 // NewDevices creates a list of Devices from all available nvml.Devices using the specified options.
 func NewDevices(opts ...Option) (DeviceList, error) {
+	klog.Info("~~ NewDevices")
+
 	o := &deviceListBuilder{}
 	for _, opt := range opts {
 		opt(o)

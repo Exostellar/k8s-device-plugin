@@ -98,12 +98,23 @@ func (r *nvmlResourceManager) CheckHealth(stop <-chan interface{}, unhealthy cha
 // getPreferredAllocation runs an allocation algorithm over the inputs.
 // The algorithm chosen is based both on the incoming set of available devices and various config settings.
 func (r *nvmlResourceManager) getPreferredAllocation(available, required []string, size int) ([]string, error) {
+	klog.Info("~ getPreferredAllocation @ nvml_manager.go")
+	klog.Infof("~ available %v", available)
+	klog.Infof("~ size %v", size)
+	klog.Infof("~ required %v", required)
+
 	// If all of the available devices are full GPUs without replicas, then
 	// calculate an aligned allocation across those devices.
 	if r.Devices().AlignedAllocationSupported() && !AnnotatedIDs(available).AnyHasAnnotations() {
-		return r.alignedAlloc(available, required, size)
+		klog.Info("~ AlignedAllocationSupported @ nvml_manager.go")
+		ret, err := r.alignedAlloc(available, required, size)
+		//: ~ alignedAlloc returned [GPU-4042836d-614e-7da9-9831-030f421fec6f]
+		klog.Infof("~ alignedAlloc returned %v", ret)
+		return ret, err
+		// return r.alignedAlloc(available, required, size)
 	}
 
+	klog.Error("~ !!!!!!!!!!! distributedAlloc @ nvml_manager.go")
 	// Otherwise, distribute them evenly across all replicated GPUs
 	return r.distributedAlloc(available, required, size)
 }
@@ -113,6 +124,7 @@ func (r *nvmlResourceManager) getPreferredAllocation(available, required []strin
 func (r *nvmlResourceManager) alignedAlloc(available, required []string, size int) ([]string, error) {
 	var devices []string
 
+	klog.Info("~ starting alignedAlloc")
 	linkedDevices, err := gpuallocator.NewDevices(
 		gpuallocator.WithNvmlLib(r.nvml),
 	)
@@ -120,20 +132,26 @@ func (r *nvmlResourceManager) alignedAlloc(available, required []string, size in
 		return nil, fmt.Errorf("unable to get device link information: %w", err)
 	}
 
+	klog.Infof("~ devices: %v", linkedDevices)
+
 	availableDevices, err := linkedDevices.Filter(available)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve list of available devices: %v", err)
 	}
+	klog.Infof("~ availableDevices: %v", availableDevices)
 
 	requiredDevices, err := linkedDevices.Filter(required)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve list of required devices: %v", err)
 	}
+	klog.Infof("~ requiredDevices: %v", requiredDevices)
 
 	allocatedDevices := gpuallocator.NewBestEffortPolicy().Allocate(availableDevices, requiredDevices, size)
-	for _, device := range allocatedDevices {
+	for i, device := range allocatedDevices {
+		klog.Infof("~ allocatedDevices[%d]: %v", i, device)
 		devices = append(devices, device.UUID)
 	}
+	klog.Infof("~ allocatedDevices: %v", allocatedDevices)
 
 	return devices, nil
 }

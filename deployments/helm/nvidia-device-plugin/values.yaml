@@ -44,13 +44,17 @@ selectorLabelsOverride: {}
 
 allowDefaultNamespace: false
 
-imagePullSecrets: []
+#imagePullSecrets: []
+imagePullSecrets:
+  - name: s3creds
 image:
-  repository: nvcr.io/nvidia/k8s-device-plugin
-  pullPolicy: IfNotPresent
+  #repository: nvcr.io/nvidia/k8s-device-plugin
+  repository: 374070299695.dkr.ecr.us-east-2.amazonaws.com/xgo/nvidia-device-plugin
+  #pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
-
+  #tag: ""
+  tag: "latest"
 updateStrategy:
   type: RollingUpdate
 

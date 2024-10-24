@@ -34,6 +34,8 @@ type Device struct {
 	// Replicas stores the total number of times this device is replicated.
 	// If this is 0 or 1 then the device is not shared.
 	Replicas int
+	// EXO
+	AllocatableMemory uint64
 }
 
 // deviceInfo defines the information the required to construct a Device
@@ -99,6 +101,15 @@ func BuildDevice(index string, d deviceInfo) (*Device, error) {
 		}
 	}
 
+	dev.AllocatableMemory = dev.TotalMemory
+
+	// klog.Info("---------------------")
+	// klog.Info("---------------------")
+	// klog.Info(" Built device: ")
+	// klog.Info(dev)
+	// klog.Info("---------------------")
+	// klog.Info("AllocatableMemory: ", dev.AllocatableMemory)
+	// klog.Info("---------------------")
 	return &dev, nil
 }
 

@@ -326,6 +326,8 @@ func (plugin *NvidiaDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.
 		if err != nil {
 			return nil, fmt.Errorf("failed to get allocate response: %v", err)
 		}
+
+		klog.Infof("~ getAllocateResponse: %v", response)
 		responses.ContainerResponses = append(responses.ContainerResponses, response)
 	}
 
@@ -339,6 +341,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	response := &pluginapi.ContainerAllocateResponse{
 		Envs: make(map[string]string),
 	}
+	klog.Infof("~ AnyCDIEnabled: %v", plugin.deviceListStrategies.AnyCDIEnabled())
 	if plugin.deviceListStrategies.AnyCDIEnabled() {
 		responseID := uuid.New().String()
 		if err := plugin.updateResponseForCDI(response, responseID, deviceIDs...); err != nil {
@@ -346,6 +349,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 		}
 	}
 	if plugin.config.Sharing.SharingStrategy() == spec.SharingStrategyMPS {
+		klog.Infof("~ Using MPS")
 		plugin.updateResponseForMPS(response)
 	}
 
@@ -356,6 +360,7 @@ func (plugin *NvidiaDevicePlugin) getAllocateResponse(requestIds []string) (*plu
 	}
 
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar) {
+		klog.Infof("~ plugin.deviceListStrategies.Includes(spec.DeviceListStrategyEnvvar)")
 		plugin.updateResponseForDeviceListEnvvar(response, deviceIDs...)
 	}
 	if plugin.deviceListStrategies.Includes(spec.DeviceListStrategyVolumeMounts) {
